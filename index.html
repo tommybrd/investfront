@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>InvestFront — alpha</title>
+<meta name="description" content="InvestFront : investissez dans les commerces de France, encaissez des dividendes, montez votre holding.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+:root{--bg:#0e141b;--panel:#151d27;--panel2:#1c2633;--line:#2a3646;--tx:#e8eef5;--mut:#8fa1b5;--acc:#35d39a;--gold:#f6c343;--red:#ff6b6b;--blue:#5aa9ff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+header{display:flex;align-items:center;gap:16px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:nowrap}
+.brand{font-weight:800;font-size:17px;letter-spacing:.2px;white-space:nowrap}
+.brand i{font-style:normal;color:var(--acc)}
+.tag{font-size:10px;font-weight:700;background:var(--gold);color:#222;border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:2px;text-transform:uppercase}
+.stat{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.stat small{color:var(--mut);font-size:11px;white-space:nowrap}
+.stat b{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.grow{flex:1}
+.speed{display:flex;gap:4px}
+.speed button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;cursor:pointer;min-width:38px;font-size:13px}
+.speed button.on{background:var(--acc);color:#06281b;border-color:var(--acc);font-weight:700}
+main{flex:1;display:flex;min-height:0}
+#panel{width:410px;max-width:100%;display:flex;flex-direction:column;position:relative;background:var(--panel);border-right:1px solid var(--line);min-height:0}
+#tabs{display:flex;border-bottom:1px solid var(--line)}
+#tabs button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:8px 2px 6px;cursor:pointer;color:var(--mut);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:1px}
+#tabs button span{font-size:17px}
+#tabs button.on{color:var(--tx);border-bottom-color:var(--acc)}
+#view{flex:1;overflow:auto;padding:12px;min-height:0}
+#card{position:absolute;inset:0;background:var(--panel);overflow:auto;padding:12px;z-index:5}
+#map{flex:1;z-index:0;background:#dfe7ee;min-height:0}
+h3{margin:16px 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut)}
+h3:first-child{margin-top:0}
+.box{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.box h4{margin:0 0 6px;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+.kpi small{display:block;color:var(--mut);font-size:11px}
+.kpi b{font-size:14px;font-variant-numeric:tabular-nums}
+.pos{color:var(--acc)}.neg{color:var(--red)}.gold{color:var(--gold)}.mut{color:var(--mut)}
+.row{display:flex;align-items:center;gap:9px;padding:8px 6px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:6px}
+.row:hover{background:var(--panel2)}
+.row .em{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:15px;flex:none}
+.row .nm{flex:1;min-width:0}
+.row .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.row .nm small{color:var(--mut);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .rt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .rt small{display:block;color:var(--mut)}
+.line{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-variant-numeric:tabular-nums}
+.line.tot{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:700}
+.btn{background:var(--acc);color:#06281b;border:0;border-radius:8px;padding:9px 12px;font-weight:700;cursor:pointer;width:100%}
+.btn:disabled{background:#3a4656;color:#8b98a8;cursor:not-allowed}
+.btn.sec{background:var(--panel);color:var(--tx);border:1px solid var(--line)}
+.btn.red{background:var(--red);color:#2b0606}
+.btn.sm{width:auto;padding:6px 10px;font-size:13px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer;font-size:12px;white-space:nowrap}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#041a33;font-weight:700}
+input[type=range]{width:100%;accent-color:var(--acc);margin:6px 0}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.qrow{display:flex;justify-content:space-between;align-items:baseline;font-size:15px}
+small{color:var(--mut)}
+.cmp{margin:6px 0 10px}
+.cmp .lab{display:flex;justify-content:space-between;font-size:12px}
+.bar{height:8px;background:var(--panel);border-radius:5px;position:relative;margin-top:3px;border:1px solid var(--line)}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--blue)}
+.bar u{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--gold)}
+.hd{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.hd .em{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;flex:none}
+.hd h2{margin:0;font-size:17px;line-height:1.2}
+.hd .x{margin-left:auto;background:var(--panel2);border:1px solid var(--line);border-radius:8px;width:34px;height:34px;cursor:pointer;flex:none;font-size:15px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11px;color:var(--mut);font-weight:600;text-align:right;padding:4px 4px;border-bottom:1px solid var(--line)}
+td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+tr.clk{cursor:pointer}tr.clk:hover{background:var(--panel2)}
+.goal{display:flex;gap:8px;padding:3px 0}.goal.ok{color:var(--mut);text-decoration:line-through}
+.log{font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.log small{margin-right:6px}
+.prog{height:6px;background:var(--panel);border-radius:4px;overflow:hidden;margin-top:6px}.prog i{display:block;height:100%;background:var(--gold)}
+.pips{letter-spacing:2px;color:var(--gold)}
+.lock{color:var(--mut);font-size:12.5px}
+#toasts{position:fixed;right:12px;bottom:28px;display:flex;flex-direction:column;gap:6px;z-index:900;max-width:min(360px,calc(100vw - 24px));pointer-events:none}
+.toast{background:#0b1118ee;border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:8px;padding:8px 11px;font-size:13px;box-shadow:0 6px 20px #0008;animation:tin .25s}
+.toast.bad{border-left-color:var(--red)}.toast.gold{border-left-color:var(--gold)}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
+#modal{position:fixed;inset:0;background:#000a;z-index:1000;display:grid;place-items:center;padding:16px}
+#modal[hidden]{display:none}
+#modal .in{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:560px;width:100%;max-height:90dvh;overflow:auto;padding:20px}
+#modal h2{margin:0 0 8px}
+#modal li{margin:5px 0}
+/* carte */
+.mk{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:15px;border:2px solid #fff;box-shadow:0 1px 5px #0007;cursor:pointer;position:relative}
+.mk.own{border-color:var(--gold);box-shadow:0 0 0 3px #f6c34388,0 1px 5px #0007}
+.mk.sel{outline:3px solid #111;outline-offset:2px}
+.mk em{position:absolute;right:-9px;top:-9px;font-style:normal;font-size:12px}
+.mk s{position:absolute;left:50%;bottom:-13px;transform:translateX(-50%);text-decoration:none;background:var(--gold);color:#222;font-size:10px;font-weight:700;border-radius:6px;padding:0 4px;white-space:nowrap}
+.cb{border-radius:50%;background:#1d5fd0d9;color:#fff;display:grid;place-items:center;font-weight:800;border:2px solid #fff;box-shadow:0 2px 8px #0006;cursor:pointer;width:100%;height:100%;font-size:13px}
+.cb.own{background:#b8860bea;border-color:var(--gold)}
+.cl{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:700;color:#14233a;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+.leaflet-div-icon{background:none;border:0}
+.leaflet-container{font:inherit}
+@media(max-width:820px){
+  header{gap:6px 10px;padding:6px 8px;flex-wrap:wrap;justify-content:space-between}
+  .brand,.grow{display:none}
+  .stat b{font-size:13px}.stat small{font-size:10px}
+  .speed{width:100%}.speed button{flex:1;padding:5px 6px}
+  main{flex-direction:column-reverse}
+  #panel{width:auto;height:56%;border-right:0;border-top:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Invest<i>Front</i><span class="tag">alpha</span></div>
+    <div class="stat"><small>Date</small><b id="tDate">—</b></div>
+    <div class="stat"><small>Trésorerie</small><b id="tCash">—</b></div>
+    <div class="stat"><small>Patrimoine net</small><b id="tNW">—</b></div>
+    <div class="stat opt"><small>Solde mensuel estimé</small><b id="tInc">—</b></div>
+    <div class="grow"></div>
+    <div class="speed" id="speed">
+      <button data-a="spd" data-v="0" title="Pause (espace)">⏸</button>
+      <button data-a="spd" data-v="1" title="Vitesse normale (1)">▶</button>
+      <button data-a="spd" data-v="2" title="Rapide (2)">▶▶</button>
+      <button data-a="spd" data-v="3" title="Très rapide (3)">▶▶▶</button>
+    </div>
+  </header>
+  <main>
+    <aside id="panel">
+      <nav id="tabs"></nav>
+      <div id="view"></div>
+      <section id="card" hidden></section>
+    </aside>
+    <div id="map"></div>
+  </main>
+</div>
+<div id="toasts"></div>
+<div id="modal" hidden><div class="in" id="modalIn"></div></div>
+<noscript>Ce jeu a besoin de JavaScript.</noscript>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+'use strict';
+/* ============================================================
+   InvestFront — alpha. Tout le jeu tient dans ce fichier.
+   Les entreprises, leurs noms et leurs chiffres sont fictifs.
+   ============================================================ */
+const KEY='investfront-alpha-1';
+const YEAR0=2027;
+const MONTHS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const SPEEDS=[0,1,3,10];
+const DAY_MS=333; // à vitesse 1 : un mois = 10 s
+
+/* ---------- Secteurs ---------- */
+const SECT={
+ resto:{n:'Restaurant',e:'🍽️',c:'#e4572e',ca:420e3,mg:.05,vol:.10,per:6,w:16,cyc:1.2,tour:1,se:[.9,.9,.95,1,1.05,1.1,1.1,1.05,1,.95,.9,1.1],nm:['Le Bistrot','La Table','Brasserie','L’Auberge','Le Comptoir','La Cantine','Chez {p}','La Table de {p}']},
+ boul:{n:'Boulangerie',e:'🥖',c:'#d9a441',ca:380e3,mg:.08,vol:.05,per:7,w:10,cyc:.4,se:[1,1,1,1,1,1,.95,.9,1,1,1,1.15],nm:['Boulangerie','Le Fournil','Aux Délices','La Mie','Maison {p}']},
+ cafe:{n:'Café-bar',e:'☕',c:'#8d5a3b',ca:260e3,mg:.07,vol:.10,per:6,w:10,cyc:1,tour:1,se:[.8,.8,.9,1,1.1,1.25,1.3,1.25,1.05,.9,.8,.85],nm:['Café','Le Zinc','Bar','Le Troquet','Café {p}']},
+ sport:{n:'Magasin de sport',e:'⚽',c:'#2e86de',ca:900e3,mg:.05,vol:.09,per:7,w:4,cyc:1.1,se:[1.1,.85,.9,.95,1,1.05,1,.9,1.25,.95,.95,1.1],nm:['Sport','Vélo & Rando','Le Vestiaire','Foulées','Terrain de Jeu']},
+ epic:{n:'Supérette',e:'🛒',c:'#27ae60',ca:1600e3,mg:.025,vol:.04,per:9,w:6,cyc:.3,se:[1,1,1,1,1,1,1,.95,1,1,1,1.1],nm:['Supérette','L’Épicerie','Le Panier','Les Halles Fraîches']},
+ pharma:{n:'Pharmacie',e:'💊',c:'#1abc9c',ca:1900e3,mg:.07,vol:.03,per:10,w:6,cyc:.1,se:[1.15,1.1,1.05,1,.95,.9,.9,.85,.95,1,1.05,1.1],nm:['Pharmacie']},
+ coif:{n:'Salon de coiffure',e:'💇',c:'#e84393',ca:140e3,mg:.10,vol:.06,per:5,w:9,cyc:.7,se:[.9,.9,1,1,1.05,1.1,1,.8,1.05,1,1,1.2],nm:['Salon','L’Atelier Coiffure','Coiffure {p}','Les Ciseaux']},
+ mode:{n:'Boutique de mode',e:'👗',c:'#9b59b6',ca:350e3,mg:.05,vol:.11,per:6,w:8,cyc:1.3,se:[1.2,.8,.9,1,1,1,1.15,.8,.95,1,1,1.2],nm:['Boutique','Le Dressing','Maison {p}','L’Atelier Mode']},
+ hotel:{n:'Hôtel',e:'🏨',c:'#5d6d9e',ca:1200e3,mg:.09,vol:.09,per:11,w:4,cyc:1.3,tour:1,se:[.7,.75,.85,1,1.1,1.2,1.4,1.45,1.1,.9,.75,.8],nm:['Hôtel','Hôtel Le Relais','Hôtel Les Voyageurs','Résidence']},
+ garage:{n:'Garage auto',e:'🔧',c:'#7f8c8d',ca:700e3,mg:.06,vol:.06,per:6,w:5,cyc:.8,se:[1,1,1,1,1,1.05,1.05,.9,1,1,1,.95],nm:['Garage','Auto Service','Carrosserie']},
+ libr:{n:'Librairie',e:'📚',c:'#6c5ce7',ca:450e3,mg:.02,vol:.06,per:6,w:3,cyc:.6,se:[.9,.85,.9,.9,.95,1,1,.9,1.2,1,1,1.4],nm:['Librairie','La Page','Les Mots']},
+ gym:{n:'Salle de sport',e:'🏋️',c:'#ff7f50',ca:520e3,mg:.11,vol:.09,per:8,w:4,cyc:1,se:[1.3,1.1,1.05,1,.95,.9,.8,.75,1.2,1.05,1,.9],nm:['Le Club Forme','Studio Pulse','La Salle','Tonus']},
+ fleur:{n:'Fleuriste',e:'💐',c:'#fd79a8',ca:180e3,mg:.06,vol:.08,per:5,w:4,cyc:.8,se:[.8,1.3,1,1,1.4,1.05,.85,.7,.85,.95,1.1,1],nm:['Fleurs','Au Jardin','L’Atelier Floral','Pétales']},
+ tech:{n:'Boutique high-tech',e:'💻',c:'#0984e3',ca:1100e3,mg:.04,vol:.10,per:8,w:3,cyc:1.2,se:[.95,.85,.9,.9,.9,.95,.95,.9,1.1,1,1.2,1.5],nm:['Micro','Pixel & Co','L’Atelier Numérique','Connexion']},
+ cine:{n:'Cinéma',e:'🎬',c:'#2d3436',ca:800e3,mg:.06,vol:.12,per:8,w:1.5,cyc:.8,se:[1.1,1.15,1,.95,.9,.85,.95,.9,.85,1.05,1.15,1.15],nm:['Cinéma Le Palace','Ciné Lumière','Cinéma L’Étoile','Le Majestic']},
+ optic:{n:'Opticien',e:'👓',c:'#00a8a8',ca:550e3,mg:.09,vol:.05,per:8,w:4,cyc:.4,se:[1,1,1,1,1,1,1,.9,1.1,1,1,1],nm:['Optique','Les Lunettes','Vision']}
+};
+const SK=Object.keys(SECT);
+SK.forEach(k=>{const s=SECT[k].se,m=s.reduce((a,b)=>a+b)/12;SECT[k].se=s.map(x=>x/m);});
+
+/* ---------- Villes : nom, lat, lon, population (milliers), cap de la mer, tourisme ---------- */
+const CITIES=[
+['Paris',48.8566,2.3522,2100,null,.8],['Marseille',43.2965,5.3698,870,250,.4],['Lyon',45.7640,4.8357,520,null,.3],
+['Toulouse',43.6047,1.4442,500],['Nice',43.7102,7.2620,340,170,1],['Nantes',47.2184,-1.5536,320],
+['Montpellier',43.6108,3.8767,300,null,.3],['Strasbourg',48.5734,7.7521,290,null,.5],['Bordeaux',44.8378,-0.5792,260,null,.5],
+['Lille',50.6292,3.0573,235],['Rennes',48.1173,-1.6778,220],['Reims',49.2583,4.0317,180,null,.3],
+['Toulon',43.1242,5.9280,180,190,.3],['Saint-Étienne',45.4397,4.3872,175],['Le Havre',49.4944,0.1079,170,225],
+['Grenoble',45.1885,5.7245,160],['Dijon',47.3220,5.0415,160,null,.3],['Angers',47.4784,-0.5632,155],
+['Nîmes',43.8367,4.3601,150,null,.3],['Clermont-Ferrand',45.7772,3.0870,147],['Le Mans',48.0061,0.1996,145],
+['Aix-en-Provence',43.5297,5.4474,145,null,.6],['Brest',48.3904,-4.4861,140,180],['Tours',47.3941,0.6848,137,null,.3],
+['Amiens',49.8941,2.2958,134],['Limoges',45.8336,1.2611,130],['Annecy',45.8992,6.1294,130,135,.9],
+['Perpignan',42.6887,2.8948,120,null,.3],['Metz',49.1193,6.1757,120],['Besançon',47.2378,6.0241,118],
+['Orléans',47.9029,1.9093,116],['Rouen',49.4432,1.0993,114,null,.3],['Mulhouse',47.7508,7.3359,108],
+['Caen',49.1829,-0.3707,106],['Nancy',48.6921,6.1844,105],['Avignon',43.9493,4.8055,91,null,.8],
+['Poitiers',46.5802,0.3404,90],['Dunkerque',51.0344,2.3768,87,350],['La Rochelle',46.1603,-1.1511,78,250,.8],
+['Pau',43.2951,-0.3708,77],['Cannes',43.5528,7.0174,74,180,1],['Ajaccio',41.9192,8.7386,72,200,.9],
+['Colmar',48.0794,7.3585,68,null,.8],['Calais',50.9513,1.8587,67,340],['Bourges',47.0810,2.3988,64],
+['Valence',44.9334,4.8924,64],['Quimper',47.9960,-4.1024,63,null,.4],['Troyes',48.2973,4.0744,62],
+['Chambéry',45.5646,5.9178,59,null,.4],['Lorient',47.7483,-3.3702,57,170],['Vannes',47.6582,-2.7608,54,null,.6],
+['Bayonne',43.4929,-1.4748,52,null,.5],['Bastia',42.6977,9.4509,48,90,.8],['Saint-Malo',48.6493,-2.0257,47,330,1],
+['Blois',47.5861,1.3359,46,null,.5],['Biarritz',43.4832,-1.5586,26,300,1]
+].map(a=>({n:a[0],la:a[1],lo:a[2],p:a[3],sea:a[4]==null?null:a[4],t:a[5]||0}));
+
+const PLACES=['du Marché','de la Gare','des Halles','de la Place','du Théâtre','des Arts','du Parc','de la Mairie','du Pont','des Remparts','du Centre','de l’Horloge','du Canal','des Tilleuls','Saint-Jean','de la Fontaine','des Quais','de la Cathédrale','du Lycée','des Jacobins','de la République','du Faubourg','des Carmes','Sainte-Anne','du Château','de l’Europe','des Acacias','du Moulin','Victor-Hugo','des Capucins','de la Poste','du Square','des Minimes','Saint-Michel'];
+const PRENOMS=['Marcel','Louise','Jeanne','Léon','Suzanne','Paulette','Gaston','Margot','Émile','Colette','Lucien','Rose','Augustin','Hugo','Inès','Malik','Yasmine','Noé','Camille','Sacha','Lina','Jules','Nadia','Félix','Agathe','Karim','Élise','Tom'];
+const NOMS=['Martin','Bernard','Dubois','Moreau','Laurent','Girard','Roux','Fournier','Lambert','Bonnet','Benali','Nguyen','Da Silva','Garcia','Petit','Mercier','Faure','Blanc','Guerin','Morel','Chevalier','Diallo','Lemoine','Perrin'];
+
+/* ---------- Collaborateurs de la holding ---------- */
+const ROLES={
+ ops:{n:'Directeur des opérations',e:'🛠️',sal:[3000,5500,9000],d:l=>`+${(l*.4).toFixed(1).replace('.',',')} pt de marge et +${l} %/an de croissance dans vos entreprises détenues à 25 % ou plus`},
+ tax:{n:'Fiscaliste',e:'⚖️',sal:[2800,5000,8500],d:l=>`−${l*15} % sur tous les impôts de la holding`},
+ ana:{n:'Analyste en investissement',e:'🔎',sal:[2500,4500,8000],d:l=>['','Révèle le potentiel de croissance de chaque entreprise','Potentiel + note de gestion, et pépites ✨ signalées sur la carte','Tout cela + frais d’acquisition divisés par deux et prix négocié à −3 %'][l]},
+ cfo:{n:'Directeur financier',e:'🏦',sal:[3000,5500,9000],d:l=>`Taux des prêts −${(l*.4).toFixed(1).replace('.',',')} pt et capacité d’emprunt +${l*25} %`}
+};
+const LVL=['—','Junior','Confirmé','Senior'];
+const HOLD_COST=5000, HOLD_FIX=300;
+
+/* ---------- Actualités ---------- */
+const EV_SECT=[
+ {id:'canic',t:'☀️ Canicule : les terrasses font le plein',sec:{cafe:[.25,.01],hotel:[.08,0]},m:3},
+ {id:'ener',t:'⚡ Flambée des prix de l’énergie : fours et cuisines coûtent cher',sec:{boul:[0,-.03],resto:[0,-.015]},m:6},
+ {id:'sportev',t:'🏅 Grand événement sportif : ruée sur les équipements',sec:{sport:[.3,.005],gym:[.15,0]},m:4},
+ {id:'tour',t:'🧳 Saison touristique record',sec:{hotel:[.25,.02],resto:[.1,.005],cafe:[.08,0]},m:5},
+ {id:'web',t:'📦 La vente en ligne grignote les boutiques',sec:{mode:[-.2,-.01],tech:[-.1,-.005],libr:[-.15,-.005]},m:8},
+ {id:'prix',t:'📚 Un prix littéraire ramène les lecteurs en librairie',sec:{libr:[.25,.01]},m:4},
+ {id:'epid',t:'🦠 Épidémie hivernale : les pharmacies sont débordées',sec:{pharma:[.15,.01]},m:3},
+ {id:'medic',t:'💊 Baisse du prix des médicaments remboursés',sec:{pharma:[0,-.02]},m:10},
+ {id:'prime',t:'🚗 Prime à la conversion : les garages tournent à plein',sec:{garage:[.2,.01]},m:6},
+ {id:'block',t:'🎬 Série de grands films à l’affiche',sec:{cine:[.4,.03]},m:3},
+ {id:'ble',t:'🌾 Hausse du prix du blé et du beurre',sec:{boul:[0,-.02]},m:5},
+ {id:'resol',t:'💪 Bonnes résolutions : boom des abonnements en salle',sec:{gym:[.3,.02]},m:3},
+ {id:'smic',t:'🧾 Hausse du salaire minimum : les marges se tendent',sec:{resto:[0,-.01],cafe:[0,-.01],coif:[0,-.012],epic:[0,-.006]},m:12},
+ {id:'phone',t:'📱 Sortie d’un smartphone très attendu',sec:{tech:[.3,.01]},m:3},
+ {id:'pluie',t:'🌧️ Été pourri : terrasses désertes',sec:{cafe:[-.25,-.02],hotel:[-.15,-.01]},m:3},
+ {id:'optic',t:'👓 Réforme du remboursement optique',sec:{optic:[0,-.025]},m:9},
+ {id:'mariage',t:'💐 La mode est aux mariages champêtres',sec:{fleur:[.25,.02]},m:5},
+ {id:'maison',t:'🥗 Le fait-maison cartonne dans les restaurants',sec:{resto:[.15,.015]},m:6},
+ {id:'guerre',t:'🛒 Guerre des prix dans la distribution',sec:{epic:[0,-.012]},m:8},
+ {id:'soldes',t:'🧥 Soldes exceptionnelles',sec:{mode:[.25,0]},m:3},
+ {id:'coupe',t:'💇 Nouvelle tendance coiffure : les salons affichent complet',sec:{coif:[.2,.015]},m:5}
+];
+const EV_CITY=[
+ {t:'🚊 Nouvelle ligne de tramway à {v} : le centre-ville revit',g:.12,m:12},
+ {t:'🏭 Une grande usine ferme près de {v}',g:-.15,m:12},
+ {t:'🎪 {v} accueille un grand festival',g:.25,m:2},
+ {t:'🚧 Grands travaux dans le centre de {v}',g:-.18,m:6},
+ {t:'🎓 Un nouveau campus ouvre à {v}',g:.10,m:18},
+ {t:'🚴 {v} ville-étape d’une grande course cycliste',g:.3,m:1}
+];
+
+/* ---------- Outils ---------- */
+const $=s=>document.querySelector(s);
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const NF0=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+const nf=(x,d)=>new Intl.NumberFormat('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d}).format(x);
+function eur(x,full){const a=Math.abs(x),s=x<0?'−':'';
+  if(!full){if(a>=1e9)return s+nf(a/1e9,2)+' Md€';if(a>=1e6)return s+nf(a/1e6,2)+' M€';if(a>=1e5)return s+nf(a/1e3,0)+' k€';if(a>=1e4)return s+nf(a/1e3,1)+' k€';}
+  return s+NF0.format(Math.round(a))+' €';}
+const sgn=x=>(x>=0?'+':'')+eur(x);
+const pc=(x,d=1)=>nf(x*100,d)+' %';
+const tx=x=>new Intl.NumberFormat('fr-FR',{maximumFractionDigits:2}).format(x*100)+' %';
+const cls=x=>x>=0?'pos':'neg';
+
+/* ---------- État ---------- */
+let G=null, SS={}, map=null, layer=null, speed=0, mapDirty=false, dragging=false;
+const ui={tab:'dash',sel:null,buy:10,sell:1,sf:new Set(),sort:'yld',loanAmt:0,loanYrs:5};
+
+function newGame(){
+  G={v:1,t:0,cash:50000,biz:[],loans:[],holding:false,staff:{ops:0,tax:0,ana:0,cfo:0},macro:.1,radj:0,rate:3,
+     fx:[],log:[],hist:[],goals:{},totDiv:0,totTax:0,totInt:0,nLoans:0,neg:0,nid:1,lid:1,over:false,seen:false};
+  CITIES.forEach((C,ci)=>{const n=Math.round(clamp(5+Math.sqrt(C.p)*1.05,8,54));for(let i=0;i<n;i++)G.biz.push(genBiz(ci,false));});
+  computeStats();G.hist.push(Math.round(netWorth()));
+  log('🎬 Vous démarrez avec '+eur(G.cash,1)+' d’économies. À vous de bâtir un empire.');
+}
+
+function genBiz(ci,fresh){
+  const C=CITIES[ci];
+  let tot=0;const ws=SK.map(k=>{let w=SECT[k].w;if(C.t&&SECT[k].tour)w*=1+C.t;
+    if(k==='cine'&&C.p<400&&G.biz.some(b=>b.c===ci&&b.s==='cine'))w=0;tot+=w;return w;});
+  let r=Math.random()*tot,s=SK[0];for(let i=0;i<SK.length;i++){r-=ws[i];if(r<=0){s=SK[i];break;}}
+  const S=SECT[s];
+  const R=.8+Math.sqrt(C.p)*.09;let la=C.la,lo=C.lo;
+  for(let i=0;i<30;i++){
+    const d=R*Math.pow(Math.random(),.65),th=Math.random()*360;
+    if(C.sea!=null&&d>.4){let a=Math.abs(th-C.sea)%360;if(a>180)a=360-a;if(a<95)continue;}
+    la=C.la+d*Math.cos(th*Math.PI/180)/111.2;lo=C.lo+d*Math.sin(th*Math.PI/180)/(111.2*Math.cos(C.la*Math.PI/180));break;
+  }
+  let name='';
+  for(let i=0;i<12;i++){const p=pick(S.nm);name=p.includes('{p}')?p.replace('{p}',pick(PRENOMS)):p+' '+pick(PLACES);
+    if(!G.biz.some(b=>b.c===ci&&b.n===name))break;}
+  const cf=(.85+.2*Math.log10(C.p/40))*(C.n==='Paris'?1.15:1);
+  const q=clamp(.5+randn()*.22,0,1);
+  const tr=.012+(q-.5)*.05+randn()*.03;
+  const ca=Math.max(40000,S.ca*cf*Math.exp(randn()*.4)*(S.tour&&C.t?1+.35*C.t:1));
+  const mg=S.mg*(-.1+2.2*q)+randn()*.008;
+  const mx=Math.random();
+  const yr=YEAR0+Math.floor(G.t/360);
+  const h=[];for(let k=24;k>=0;k--)h.push(Math.round(ca*Math.pow(1+tr,-k/12)*(1+randn()*.012)/1000));
+  return {id:G.nid++,n:name,s,c:ci,la:+la.toFixed(5),lo:+lo.toFixed(5),ca,mg,ma:mg,tr,q,
+    pay:Math.round((.3+Math.random()*.4)*20)/20,max:mx<.65?100:mx<.9?49:20,
+    tre:ca*Math.random()*.08,res:0,own:0,cost:0,since:null,divs:0,mk:0,rn:0,warn:false,
+    boss:pick(PRENOMS)+' '+pick(NOMS),yr:fresh?yr:yr-1-Math.floor(Math.pow(Math.random(),2)*40),h};
+}
+
+/* ---------- Calculs ---------- */
+const byId=id=>G.biz.find(b=>b.id===id);
+const stakes=()=>G.biz.filter(b=>b.own>0);
+function g12(b){const h=b.h;return h.length>12?h[h.length-1]/h[h.length-13]-1:.02;}
+function valo(b){const S=SECT[b.s];const gf=clamp(1+(g12(b)-.02)*2.5,.7,1.6);
+  return Math.max(b.ca*.2,b.ca*Math.max(b.ma,0)*S.per*gf)+Math.max(b.tre,0);}
+const yld=b=>Math.max(0,b.ca*b.ma)*b.pay/valo(b);
+const debt=()=>G.loans.reduce((a,L)=>a+L.bal,0);
+const portVal=()=>stakes().reduce((a,b)=>a+valo(b)*b.own/100,0);
+const netWorth=()=>G.cash+portVal()-debt();
+const taxMult=()=>G.holding?1-.15*G.staff.tax:1;
+function divTax(own){if(!G.holding)return .30;return (own>=5?.0125:.25)*taxMult();}
+function pvTax(b){if(!G.holding)return .30;const held=b.since!=null&&G.t-b.since>=720;return (b.own>=5&&held?.03:.25)*taxMult();}
+const estDiv=b=>Math.max(0,b.ca*b.ma)*b.pay*b.own/100*(1-divTax(b.own));
+const estDivAll=()=>stakes().reduce((a,b)=>a+estDiv(b),0);
+const salaries=()=>Object.keys(ROLES).reduce((a,k)=>a+(G.staff[k]?ROLES[k].sal[G.staff[k]-1]:0),0);
+const loanPay=()=>G.loans.reduce((a,L)=>a+L.pay,0);
+const monthlyNet=()=>estDivAll()/12-loanPay()-salaries()-(G.holding?HOLD_FIX:0);
+function loanCap(){const lf=1+(G.holding?.5:0)+G.staff.cfo*.25;
+  return Math.max(0,Math.floor((lf*Math.max(0,netWorth())+2.5*estDivAll()-debt())/1000)*1000);}
+function loanRate(amt,yrs){const lev=(debt()+amt)/Math.max(netWorth(),1);
+  return Math.max(1,G.rate+2-(G.holding?.3:0)-G.staff.cfo*.4+lev*.5+(yrs-3)*.08);}
+const annuity=(P,r,n)=>{const i=r/1200;return P*i/(1-Math.pow(1+i,-n));};
+function quoteBuy(b,pct){const neg=G.staff.ana>=3;const price=valo(b)*pct/100*(neg?.97:1);
+  const ctrl=(b.own<50&&b.own+pct>=50)?price*.10:0;const fees=(price+ctrl)*(neg?.02:.04);
+  return {price,ctrl,fees,total:price+ctrl+fees};}
+function quoteSell(b,pct){const gross=valo(b)*pct/100*.97;const basis=b.own?b.cost*pct/b.own:0;
+  const gain=gross-basis;const tax=Math.max(0,gain)*pvTax(b);return {gross,basis,gain,tax,net:gross-tax};}
+function computeStats(){SS={};SK.forEach(k=>SS[k]={n:0,ca:0,mg:0,yld:0,g:0,val:0});
+  for(const b of G.biz){const s=SS[b.s];s.n++;s.ca+=b.ca;s.mg+=b.ma;s.yld+=yld(b);s.g+=g12(b);s.val+=valo(b);}
+  SK.forEach(k=>{const s=SS[k],n=s.n||1;s.ca/=n;s.mg/=n;s.yld/=n;s.g/=n;s.val/=n;});}
+function dateStr(){const d=G.t%30+1,m=Math.floor(G.t/30)%12,y=YEAR0+Math.floor(G.t/360);return d+' '+MONTHS[m]+' '+y;}
+function shortDate(t){const m=Math.floor(t/30)%12,y=YEAR0+Math.floor(t/360);return MONTHS[m].slice(0,4)+'. '+y;}
+const RANKS=[[0,'Petit porteur'],[1e5,'Investisseur local'],[5e5,'Business angel'],[2e6,'Capital-investisseur'],[1e7,'Magnat régional'],[5e7,'Tycoon national']];
+function stars(b){const t=b.tr;const n=t<-.02?1:t<.01?2:t<.04?3:t<.07?4:5;return '★'.repeat(n)+'☆'.repeat(5-n);}
+const grade=b=>b.q>=.75?'A':b.q>=.5?'B':b.q>=.25?'C':'D';
+const isGem=b=>b.q>=.68&&b.tr>=.035;
+
+/* ---------- Journal & notifications ---------- */
+function log(txt){G.log.unshift({t:G.t,x:txt});if(G.log.length>80)G.log.pop();}
+function toast(txt,kind){const el=document.createElement('div');el.className='toast '+(kind||'');el.textContent=txt;
+  const box=$('#toasts');box.appendChild(el);while(box.children.length>4)box.firstChild.remove();setTimeout(()=>el.remove(),5200);}
+function news(txt,kind){log(txt);toast(txt,kind);}
+
+/* ---------- Simulation ---------- */
+function stepBiz(b,mi,sf,cf){
+  const S=SECT[b.s];const ops=b.own>=25?G.staff.ops:0;
+  const g=b.tr+G.macro*.04*S.cyc+(sf?sf[0]:0)+(cf?cf[0]:0)+ops*.01+(b.mk>0?.10:0);
+  b.ca=Math.max(20000,b.ca*(1+g/12+randn()*S.vol/3.5));
+  if(b.tre>0){const inv=b.tre*.04;b.tre-=inv;b.ca+=inv*(.2+.8*b.q);}
+  const target=S.mg*(-.1+2.2*b.q)+(sf?sf[1]:0)+ops*.004+G.macro*.005*S.cyc;
+  b.mg=clamp(b.mg+(target-b.mg)*.10+randn()*.004,-.2,.4);
+  b.ma+=(b.mg-b.ma)*.3;
+  b.tr+=((.012+(b.q-.5)*.05)-b.tr)*.05+randn()*.005;
+  if(Math.random()<.006){b.q=clamp(b.q-.15,0,1);b.mg-=.03;b.res-=b.ca*.04*Math.exp(randn()*.8);}
+  if(Math.random()<.004)b.q=clamp(b.q+.15,0,1);
+  b.res+=b.ca/12*S.se[mi]*b.mg;
+  b.h.push(Math.round(b.ca/1000));if(b.h.length>25)b.h.shift();
+  if(b.mk>0)b.mk--;
+}
+function rollEvents(){
+  if(Math.random()<.30){const pool=EV_SECT.filter(e=>!G.fx.some(f=>f.id===e.id));
+    if(pool.length){const e=pick(pool);G.fx.push({id:e.id,t:e.t,sec:e.sec,left:e.m});news(e.t,'gold');}}
+  if(Math.random()<.12){const e=pick(EV_CITY),ci=Math.floor(Math.random()*CITIES.length);
+    if(!G.fx.some(f=>f.ci===ci)){const t=e.t.replace('{v}',CITIES[ci].n);G.fx.push({id:'c'+ci,t,ci,g:e.g,left:e.m});news(t,'gold');}}
+  if(Math.random()<.07){const r=Math.random();
+    if(r<.25){G.radj-=.5;news('📉 La banque centrale baisse ses taux : le crédit devient moins cher','gold');}
+    else if(r<.5){G.radj+=.5;news('📈 La banque centrale relève ses taux : le crédit se renchérit','gold');}
+    else if(r<.75){G.macro=clamp(G.macro-.5,-1,1);news('⛈️ Coup de froid sur l’économie : la consommation ralentit','bad');}
+    else{G.macro=clamp(G.macro+.45,-1,1);news('🌤️ Embellie économique : les Français consomment davantage','gold');}}
+}
+function ownedEvents(){
+  for(const b of stakes()){if(Math.random()>.03)continue;const r=Math.floor(Math.random()*6);
+    if(r===0){b.ca*=1.05;news('📰 '+b.n+' : bel article dans la presse locale, la clientèle afflue');}
+    else if(r===1){b.res-=b.ca*.02;news('🧯 '+b.n+' : dégât des eaux, une semaine de fermeture','bad');}
+    else if(r===2){b.q=clamp(b.q+.1,0,1);news('🤝 '+b.n+' : une excellente recrue rejoint l’équipe');}
+    else if(r===3){b.res-=b.ca*.01;news('🔍 '+b.n+' : contrôle administratif, une amende à payer','bad');}
+    else if(r===4){b.tr+=.02;news('⭐ '+b.n+' : les avis clients sont excellents');}
+    else{b.q=clamp(.5+randn()*.25,0,1);b.boss=pick(PRENOMS)+' '+pick(NOMS);news('👋 '+b.n+' : le gérant part à la retraite, '+b.boss+' prend la suite','gold');}}
+}
+function payDividends(){
+  let net=0,tax=0;
+  for(const b of G.biz){
+    if(b.res>0){const div=b.res*b.pay;b.tre+=b.res-div;
+      if(b.own>0){const gross=div*b.own/100,t=gross*divTax(b.own);net+=gross-t;tax+=t;b.divs+=gross-t;}}
+    else b.tre+=b.res;
+    b.res=0;
+  }
+  if(net>0){G.cash+=net;G.totDiv+=net;G.totTax+=tax;news('💶 Dividendes du trimestre : +'+eur(net,1)+' net (impôts : '+eur(tax,1)+')');}
+}
+function forcedSale(){
+  const st=stakes().sort((a,b)=>valo(b)*b.own-valo(a)*a.own);
+  while(G.cash<0&&st.length){const b=st.shift();const per=valo(b)*.85/100;
+    const need=Math.min(b.own,Math.ceil(-G.cash/per));G.cash+=per*need;b.cost-=b.cost*need/b.own;b.own-=need;
+    if(!b.own){b.cost=0;b.since=null;}
+    news('🏦 La banque saisit et revend '+need+' % de '+b.n+' pour couvrir votre découvert','bad');mapDirty=true;}
+}
+function endMonth(){
+  const mi=(Math.floor(G.t/30)+11)%12;
+  G.macro=clamp(G.macro*.96+randn()*.09,-1,1);G.radj*=.97;G.rate=clamp(3+G.macro*1.2+G.radj,.5,7);
+  rollEvents();
+  const sf={},cf={};
+  for(const f of G.fx){if(f.sec)for(const k in f.sec){const a=sf[k]||(sf[k]=[0,0]);a[0]+=f.sec[k][0];a[1]+=f.sec[k][1];}
+    if(f.ci!=null){const a=cf[f.ci]||(cf[f.ci]=[0,0]);a[0]+=f.g;}}
+  for(const b of G.biz)stepBiz(b,mi,sf[b.s],cf[b.c]);
+  G.fx.forEach(f=>f.left--);G.fx=G.fx.filter(f=>f.left>0);
+  ownedEvents();
+  if(mi%3===2)payDividends();
+  // charges
+  for(const L of G.loans){const int=L.bal*L.rate/1200,pay=Math.min(L.pay,L.bal+int);G.cash-=pay;L.bal-=pay-int;L.n--;G.totInt+=int;}
+  const done=G.loans.filter(L=>L.bal<=1);done.forEach(()=>news('✅ Un prêt est entièrement remboursé'));
+  G.loans=G.loans.filter(L=>L.bal>1);
+  G.cash-=salaries()+(G.holding?HOLD_FIX:0);
+  // faillites
+  for(const b of G.biz.filter(b=>{b.dz=b.tre<0?(b.dz||0)+1:0;return b.tre<-.06*b.ca&&b.dz>=4;})){
+    if(b.own>0)news('💥 '+b.n+' ('+CITIES[b.c].n+') fait faillite : votre participation de '+b.own+' % est perdue','bad');
+    G.biz.splice(G.biz.indexOf(b),1);G.biz.push(genBiz(b.c,true));
+    if(ui.sel===b.id){ui.sel=null;}mapDirty=true;}
+  for(const b of stakes()){
+    if(b.tre<-.02*b.ca&&!b.warn){b.warn=true;news('⚠️ '+b.n+' est en difficulté : sa trésorerie est dans le rouge'+(b.own>=50?', recapitalisez-la':', pensez à vendre'),'bad');}
+    else if(b.tre>=0)b.warn=false;}
+  // découvert
+  if(G.cash<0){G.cash*=1.01;G.neg++;
+    if(G.neg===1)news('🚨 Votre compte est à découvert ! Sans régularisation sous 3 mois, la banque vendra vos parts','bad');
+    if(G.neg>=3){forcedSale();if(G.cash<0&&!stakes().length){gameOver();return;}if(G.cash>=0)G.neg=0;}
+  }else G.neg=0;
+  computeStats();
+  G.hist.push(Math.round(netWorth()));if(G.hist.length>360)G.hist.shift();
+  checkGoals();
+  if(mi%3===2)save();
+  refresh(true);
+}
+function gameOver(){G.over=true;speed=0;save();
+  modal(`<h2>💸 Faillite personnelle</h2><p>Plus de trésorerie, plus de participations : la banque a tout repris. Vous aurez tenu jusqu’au ${dateStr()}.</p><button class="btn" data-a="reset2">Recommencer une partie</button>`);}
+
+/* ---------- Objectifs ---------- */
+const GOALS=[
+ ['buy','Acheter une première participation',()=>stakes().length>0],
+ ['div','Encaisser un premier dividende',()=>G.totDiv>0],
+ ['loan','Contracter un prêt bancaire',()=>G.nLoans>0],
+ ['five','Détenir 5 participations',()=>stakes().length>=5],
+ ['maj','Devenir majoritaire (50 % ou plus) dans une entreprise',()=>stakes().some(b=>b.own>=50)],
+ ['hold','Créer sa holding',()=>G.holding],
+ ['hire','Embaucher un premier collaborateur',()=>salaries()>0],
+ ['sect','Être présent dans 5 secteurs',()=>new Set(stakes().map(b=>b.s)).size>=5],
+ ['city','Investir dans 5 villes',()=>new Set(stakes().map(b=>b.c)).size>=5],
+ ['nw250','Atteindre 250 k€ de patrimoine net',()=>netWorth()>=25e4],
+ ['rent','Vivre de ses rentes : solde mensuel de 5 000 €',()=>monthlyNet()>=5000],
+ ['nw1m','Devenir millionnaire',()=>netWorth()>=1e6],
+ ['nw10m','Atteindre 10 M€ de patrimoine net',()=>netWorth()>=1e7]
+];
+function checkGoals(){for(const [id,t,f] of GOALS)if(!G.goals[id]&&f()){G.goals[id]=1;news('🎯 Objectif atteint : '+t,'gold');}}
+
+/* ---------- Actions du joueur ---------- */
+function buy(){const b=byId(ui.sel);if(!b)return;const pct=clamp(ui.buy,1,b.max-b.own);if(pct<1)return;
+  const q=quoteBuy(b,pct);if(q.total>G.cash){toast('Trésorerie insuffisante','bad');return;}
+  G.cash-=q.total;if(!b.own)b.since=G.t;b.own+=pct;b.cost+=q.total;
+  log('🛒 Achat de '+pct+' % de '+b.n+' ('+CITIES[b.c].n+') pour '+eur(q.total,1));
+  toast('Vous détenez '+b.own+' % de '+b.n);ui.buy=Math.min(10,Math.max(1,b.max-b.own));ui.sell=b.own;after();}
+function sell(){const b=byId(ui.sel);if(!b||!b.own)return;const pct=clamp(ui.sell,1,b.own);const q=quoteSell(b,pct);
+  G.cash+=q.net;G.totTax+=q.tax;b.cost-=q.basis;b.own-=pct;if(!b.own){b.cost=0;b.since=null;}
+  log('💼 Vente de '+pct+' % de '+b.n+' : '+eur(q.net,1)+' net (plus-value '+sgn(q.gain)+', impôt '+eur(q.tax,1)+')');
+  toast('Vente encaissée : '+eur(q.net,1));ui.sell=Math.max(1,b.own);after();}
+function marketing(){const b=byId(ui.sel);if(!b||b.own<50||b.mk>0)return;const c=b.ca*.04;if(c>G.cash)return toast('Trésorerie insuffisante','bad');
+  G.cash-=c;b.cost+=c;b.mk=12;log('📣 Campagne marketing pour '+b.n+' ('+eur(c,1)+')');after();}
+function renovate(){const b=byId(ui.sel);if(!b||b.own<50||G.t<b.rn)return;const c=b.ca*.12;if(c>G.cash)return toast('Trésorerie insuffisante','bad');
+  G.cash-=c;b.cost+=c;b.q=clamp(b.q+.12,0,1);b.ca*=1.04;b.rn=G.t+1080;log('🏗️ Rénovation de '+b.n+' ('+eur(c,1)+')');after();}
+function recap(){const b=byId(ui.sel);if(!b||b.tre>=0)return;const c=-b.tre;if(c>G.cash)return toast('Trésorerie insuffisante','bad');
+  G.cash-=c;b.cost+=c;b.tre=0;b.warn=false;log('🩹 Recapitalisation de '+b.n+' ('+eur(c,1)+')');after();}
+function createHolding(){if(G.holding||G.cash<HOLD_COST)return;G.cash-=HOLD_COST;G.holding=true;
+  news('🏢 Votre holding est créée : vos participations y sont apportées, la fiscalité change','gold');after();}
+function hire(k){if(!G.holding||G.staff[k]>=3)return;const c=ROLES[k].sal[G.staff[k]];if(c>G.cash)return toast('Trésorerie insuffisante','bad');
+  G.cash-=c;G.staff[k]++;log(ROLES[k].e+' '+ROLES[k].n+' : niveau '+LVL[G.staff[k]]);after();}
+function fire(k){if(!G.staff[k])return;const c=ROLES[k].sal[G.staff[k]-1]*2;G.cash-=c;G.staff[k]=0;
+  log('📤 Départ du '+ROLES[k].n.toLowerCase()+' (indemnité '+eur(c,1)+')');after();}
+function takeLoan(){const cap=loanCap();const amt=clamp(ui.loanAmt,0,cap);if(amt<5000)return;
+  const yrs=ui.loanYrs,rate=loanRate(amt,yrs),n=yrs*12;
+  G.loans.push({id:G.lid++,p0:amt,bal:amt,rate,n,pay:annuity(amt,rate,n)});G.cash+=amt;G.nLoans++;
+  log('🏦 Prêt de '+eur(amt,1)+' sur '+yrs+' ans à '+nf(rate,2)+' %');toast('Prêt accordé : +'+eur(amt,1));ui.loanAmt=0;after();}
+function repay(id){const L=G.loans.find(l=>l.id===id);if(!L||G.cash<L.bal)return toast('Trésorerie insuffisante','bad');
+  G.cash-=L.bal;G.loans=G.loans.filter(l=>l!==L);log('✅ Remboursement anticipé d’un prêt ('+eur(L.bal,1)+')');after();}
+function after(){mapDirty=true;computeStats();checkGoals();save();refresh(false);}
+
+/* ---------- Sauvegarde ---------- */
+function save(){try{localStorage.setItem(KEY,JSON.stringify(G));}catch(e){}}
+function load(){try{const s=localStorage.getItem(KEY);if(!s)return false;const g=JSON.parse(s);if(!g||g.v!==1||!Array.isArray(g.biz))return false;G=g;return true;}catch(e){return false;}}
+
+/* ---------- Carte ---------- */
+function initMap(){
+  if(!window.L){$('#map').innerHTML='<p style="padding:20px;color:#333">La carte n’a pas pu se charger (connexion requise). Le jeu reste jouable depuis l’onglet Marché.</p>';return;}
+  map=L.map('map',{zoomControl:false,minZoom:5,maxZoom:17,maxBounds:[[40,-8],[52.5,12]],maxBoundsViscosity:.8}).setView([46.6,2.6],6);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · entreprises fictives'}).addTo(map);
+  layer=L.layerGroup().addTo(map);
+  map.on('moveend zoomend',()=>{drawMap();if(ui.tab==='market'&&!dragging)renderView();});
+}
+const inFilter=b=>!ui.sf.size||ui.sf.has(b.s);
+function drawMap(){
+  if(!map)return;mapDirty=false;layer.clearLayers();const z=map.getZoom();
+  if(z<12){
+    const cnt=CITIES.map(()=>[0,0]);for(const b of G.biz)if(inFilter(b)){cnt[b.c][0]++;if(b.own>0)cnt[b.c][1]++;}
+    CITIES.forEach((C,i)=>{const n=cnt[i][0];if(!n)return;const sz=Math.round(24+Math.sqrt(n)*3.2);
+      const lab=(z>=7||C.p>=250)?`<span class="cl">${C.n}</span>`:'';
+      const m=L.marker([C.la,C.lo],{icon:L.divIcon({html:`<div class="cb${cnt[i][1]?' own':''}">${n}</div>${lab}`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]}),title:C.n,zIndexOffset:cnt[i][1]?500:0});
+      m.on('click',()=>map.setView([C.la,C.lo],C.p>400?13:14));layer.addLayer(m);});
+  }else{
+    const bb=map.getBounds().pad(.15),gems=G.staff.ana>=2;
+    for(const b of G.biz){if(!inFilter(b)||!bb.contains([b.la,b.lo]))continue;const S=SECT[b.s];
+      const m=L.marker([b.la,b.lo],{icon:L.divIcon({html:`<div class="mk${b.own?' own':''}${b.id===ui.sel?' sel':''}" style="background:${S.c}">${S.e}${gems&&isGem(b)?'<em>✨</em>':''}${b.own?`<s>${b.own} %</s>`:''}</div>`,iconSize:[30,30],iconAnchor:[15,15]}),zIndexOffset:b.id===ui.sel?1000:b.own?500:0});
+      m.bindTooltip(`<b>${b.n}</b><br>${S.n} · CA ${eur(b.ca)} · marge ${pc(b.ma)}`,{direction:'top',offset:[0,-14]});
+      m.on('click',()=>select(b.id,false));layer.addLayer(m);}
+  }
+}
+function select(id,fly){const b=byId(id);if(!b)return;ui.sel=id;ui.buy=clamp(10,1,Math.max(1,b.max-b.own));ui.sell=Math.max(1,b.own);
+  if(map&&fly){if(map.getZoom()<13||!map.getBounds().pad(-.15).contains([b.la,b.lo]))map.setView([b.la,b.lo],Math.max(map.getZoom(),15));}
+  drawMap();renderCard();$('#card').scrollTop=0;}
+
+/* ---------- Affichage ---------- */
+const TABS=[['dash','📊','Bord'],['market','🗺️','Marché'],['port','💼','Portefeuille'],['sect','🏭','Secteurs'],['bank','🏦','Banque'],['hold','🏢','Holding']];
+function renderTop(){
+  $('#tDate').textContent=dateStr();
+  const c=$('#tCash');c.textContent=eur(G.cash,G.cash<1e6);c.className=G.cash<0?'neg':'';
+  $('#tNW').textContent=eur(netWorth());
+  const mn=monthlyNet(),i=$('#tInc');i.textContent=sgn(mn)+'/mois';i.className=cls(mn);
+  document.querySelectorAll('#speed button').forEach(b=>b.classList.toggle('on',+b.dataset.v===speed));
+}
+function renderTabs(){$('#tabs').innerHTML=TABS.map(t=>`<button data-a="tab" data-v="${t[0]}" class="${ui.tab===t[0]?'on':''}"><span>${t[1]}</span>${t[2]}</button>`).join('');}
+function renderView(){const v={dash:vDash,market:vMarket,port:vPort,sect:vSect,bank:vBank,hold:vHold}[ui.tab];$('#view').innerHTML=v();if(ui.tab==='bank')updLoan();}
+function refresh(periodic){
+  renderTop();
+  if(periodic&&(dragging||(document.activeElement&&document.activeElement.tagName==='SELECT'))){if(mapDirty)drawMap();return;}
+  renderTabs();renderView();renderCard();if(mapDirty||!periodic)drawMap();
+}
+function bizRow(b,right){const S=SECT[b.s];return `<div class="row" data-a="sel" data-id="${b.id}"><div class="em" style="background:${S.c}">${S.e}</div><div class="nm"><b>${b.n}</b><small>${S.n} · ${CITIES[b.c].n}${b.own?` · <span class="gold">${b.own} % détenus</span>`:''}</small></div><div class="rt">${right}</div></div>`;}
+
+function vDash(){
+  const nw=netWorth();let ri=0;RANKS.forEach((r,i)=>{if(nw>=r[0])ri=i;});const nx=RANKS[ri+1];
+  const h=G.hist,mn=Math.min(...h),mx=Math.max(...h),sp=(mx-mn)||1;
+  const pts=h.map((v,i)=>`${(h.length>1?i/(h.length-1):0)*300},${72-(v-mn)/sp*64}`).join(' ');
+  const dv=estDivAll()/12,lp=loanPay(),sa=salaries(),fx=G.holding?HOLD_FIX:0;
+  const done=GOALS.filter(g=>G.goals[g[0]]).length;
+  const mac=G.macro>.4?'🌞 Forte croissance':G.macro>.1?'🌤️ Croissance':G.macro>-.2?'⛅ Économie stable':G.macro>-.5?'🌧️ Ralentissement':'⛈️ Récession';
+  return `<div class="box"><div class="line"><span>🏅 Rang</span><b class="gold">${RANKS[ri][1]}</b></div>
+  ${nx?`<small>Prochain rang : ${nx[1]} à ${eur(nx[0])}</small><div class="prog"><i style="width:${clamp((nw-RANKS[ri][0])/(nx[0]-RANKS[ri][0])*100,0,100)}%"></i></div>`:'<small>Rang maximal atteint. Bravo !</small>'}</div>
+  <h3>Patrimoine net — ${eur(nw)}</h3>
+  <div class="box"><svg viewBox="0 0 300 76" preserveAspectRatio="none" style="width:100%;height:76px;display:block"><polyline points="${h.length>1?pts:'0,40 300,40'}" fill="none" stroke="#35d39a" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+  <div class="line"><small>${shortDate(Math.max(0,G.t-(h.length-1)*30))}</small><small>Trésorerie ${eur(G.cash)} · Parts ${eur(portVal())} · Dettes ${eur(debt())}</small></div></div>
+  <h3>Budget mensuel estimé</h3>
+  <div class="box"><div class="line"><span>Dividendes nets (moyenne)</span><b class="pos">+${eur(dv,1)}</b></div>
+  <div class="line"><span>Mensualités de prêt</span><b>${lp?'−'+eur(lp,1):'—'}</b></div>
+  <div class="line"><span>Salaires de la holding</span><b>${sa?'−'+eur(sa,1):'—'}</b></div>
+  <div class="line"><span>Frais de structure</span><b>${fx?'−'+eur(fx,1):'—'}</b></div>
+  <div class="line tot"><span>Solde</span><b class="${cls(dv-lp-sa-fx)}">${sgn(dv-lp-sa-fx)}</b></div>
+  <small>Les dividendes tombent à la fin de chaque trimestre.</small></div>
+  <h3>Objectifs (${done}/${GOALS.length})</h3>
+  <div class="box">${GOALS.map(g=>`<div class="goal${G.goals[g[0]]?' ok':''}"><span>${G.goals[g[0]]?'✅':'⬜'}</span><span>${g[1]}</span></div>`).join('')}</div>
+  <h3>Actualités en cours</h3>
+  <div class="box"><div class="line"><span>Conjoncture</span><b>${mac}</b></div><div class="line"><span>Taux directeur</span><b>${nf(G.rate,2)} %</b></div>
+  ${G.fx.length?G.fx.map(f=>`<div class="log">${f.t} <small>(encore ${f.left} mois)</small></div>`).join(''):'<small>Aucun événement en cours.</small>'}</div>
+  <h3>Journal</h3>
+  <div>${G.log.slice(0,40).map(l=>`<div class="log"><small>${shortDate(l.t)}</small>${l.x}</div>`).join('')}</div>
+  <div class="btns" style="margin-top:14px"><button class="btn sec sm" data-a="help">📖 Règles du jeu</button><button class="btn sec sm" data-a="reset">🔄 Nouvelle partie</button></div>`;
+}
+const SORTS={yld:['Meilleur rendement',b=>-yld(b)],cheap:['Les plus abordables',b=>valo(b)],ca:['Plus gros chiffre d’affaires',b=>-b.ca],mg:['Meilleure marge',b=>-b.ma],gr:['Plus forte croissance',b=>-g12(b)]};
+function vMarket(){
+  const zoomed=map&&map.getZoom()>=12,bb=zoomed?map.getBounds():null;
+  let list=G.biz.filter(b=>inFilter(b)&&(!bb||bb.contains([b.la,b.lo])));
+  const f=SORTS[ui.sort][1];const tot=list.length;list=list.map(b=>[f(b),b]).sort((a,b)=>a[0]-b[0]).slice(0,60).map(x=>x[1]);
+  return `<div class="chips"><span class="chip${ui.sf.size?'':' on'}" data-a="sfclear">Tous</span>${SK.map(k=>`<span class="chip${ui.sf.has(k)?' on':''}" data-a="sfil" data-k="${k}" title="${SECT[k].n}">${SECT[k].e}</span>`).join('')}</div>
+  <div class="line" style="align-items:center"><select id="selSort">${Object.keys(SORTS).map(k=>`<option value="${k}"${ui.sort===k?' selected':''}>${SORTS[k][0]}</option>`).join('')}</select>
+  <small>${tot} entreprise${tot>1?'s':''} · ${zoomed?'zone affichée':'toute la France'}</small></div>
+  ${zoomed?'':'<small>Cliquez sur une ville de la carte pour voir ses commerces.</small>'}
+  <div style="margin-top:6px">${list.map(b=>bizRow(b,`<b>${eur(valo(b))}</b><small>rdt ${pc(yld(b))} · marge ${pc(b.ma)}</small>`)).join('')||'<p class="mut">Aucune entreprise ici avec ce filtre.</p>'}</div>`;
+}
+function vPort(){
+  const st=stakes().sort((a,b)=>valo(b)*b.own-valo(a)*a.own);
+  if(!st.length)return `<div class="box"><h4>Votre portefeuille est vide</h4><p class="mut">Zoomez sur une ville, cliquez sur un commerce et achetez une part de son capital. Chaque trimestre, il vous versera une partie de son bénéfice en dividendes.</p><button class="btn" data-a="tab" data-v="market">Voir les meilleures opportunités</button></div>`;
+  const val=portVal(),cost=st.reduce((a,b)=>a+b.cost,0),dv=estDivAll();
+  return `<div class="kpis"><div class="kpi"><small>Valeur des parts</small><b>${eur(val)}</b></div><div class="kpi"><small>Plus-value latente</small><b class="${cls(val-cost)}">${sgn(val-cost)}</b></div><div class="kpi"><small>Dividendes nets/an</small><b class="pos">${eur(dv)}</b></div></div>
+  <small>${st.length} participation${st.length>1?'s':''} · dividendes encaissés depuis le début : ${eur(G.totDiv)} · impôts payés : ${eur(G.totTax)}</small>
+  <div style="margin-top:6px">${st.map(b=>{const v=valo(b)*b.own/100;return bizRow(b,`<b>${eur(v)}</b><small class="${cls(v-b.cost)}">${sgn(v-b.cost)} · ${eur(estDiv(b))}/an</small>`);}).join('')}</div>`;
+}
+function vSect(){
+  const act={};G.fx.forEach(f=>{if(f.sec)for(const k in f.sec)act[k]=(f.sec[k][0]+f.sec[k][1]*8)>=0?'🔺':'🔻';});
+  const rows=SK.slice().sort((a,b)=>SS[b].yld-SS[a].yld);
+  return `<p class="mut" style="margin-top:0">Moyennes calculées sur toutes les entreprises du pays. Cliquez sur un secteur pour filtrer la carte.</p>
+  <table><tr><th>Secteur</th><th>Nb</th><th>CA moy.</th><th>Marge</th><th>Rdt</th><th>12 mois</th></tr>
+  ${rows.map(k=>{const s=SS[k];return `<tr class="clk" data-a="sectgo" data-k="${k}"><td>${SECT[k].e} ${SECT[k].n} ${act[k]||''}</td><td>${s.n}</td><td>${eur(s.ca)}</td><td>${pc(s.mg)}</td><td>${pc(s.yld)}</td><td class="${cls(s.g)}">${s.g>=0?'▲':'▼'} ${pc(Math.abs(s.g))}</td></tr>`;}).join('')}</table>
+  <small>Rdt = dividende annuel attendu rapporté au prix des parts. 🔺🔻 = actualité en cours sur le secteur.</small>`;
+}
+function vBank(){
+  const cap=loanCap(),d=debt();ui.loanAmt=clamp(ui.loanAmt||Math.min(cap,20000),0,cap);
+  return `<div class="kpis"><div class="kpi"><small>Capacité d’emprunt</small><b class="pos">${eur(cap)}</b></div><div class="kpi"><small>Dette en cours</small><b>${eur(d)}</b></div><div class="kpi"><small>Taux directeur</small><b>${nf(G.rate,2)} %</b></div></div>
+  <div class="box"><h4>Nouveau prêt</h4>
+  ${cap>=5000?`<div class="qrow"><span>Montant</span><b id="lAmt"></b></div><input type="range" id="rLoan" min="5000" max="${cap}" step="1000" value="${Math.max(5000,ui.loanAmt)}">
+  <div class="line" style="align-items:center"><span>Durée</span><select id="selYrs">${[3,5,7,10].map(y=>`<option value="${y}"${ui.loanYrs===y?' selected':''}>${y} ans</option>`).join('')}</select></div>
+  <div id="qLoan"></div><button class="btn" data-a="loan" style="margin-top:8px">Emprunter</button>`
+  :`<p class="mut">La banque ne peut rien vous prêter de plus pour l’instant (minimum 5 000 €). Augmentez votre patrimoine ou vos dividendes.</p>`}</div>
+  <small>La banque prête selon vos capacités : ${nf(1+(G.holding?.5:0)+G.staff.cfo*.25,2)} × votre patrimoine net + 2,5 × vos dividendes annuels, moins vos dettes. Une holding et un directeur financier augmentent ce plafond et baissent le taux.</small>
+  <h3>Prêts en cours</h3>
+  ${G.loans.length?G.loans.map(L=>`<div class="box"><div class="line"><span>Capital restant</span><b>${eur(L.bal,1)}</b></div><div class="line"><span>Mensualité</span><b>${eur(L.pay,1)}</b></div><div class="line"><span>Taux · durée restante</span><b>${nf(L.rate,2)} % · ${L.n} mois</b></div><button class="btn sec sm" data-a="repay" data-id="${L.id}" ${G.cash<L.bal?'disabled':''}>Rembourser par anticipation</button></div>`).join(''):'<p class="mut">Aucun prêt.</p>'}`;
+}
+function updLoan(){const r=$('#rLoan');if(!r)return;const amt=+r.value;ui.loanAmt=amt;const rate=loanRate(amt,ui.loanYrs),m=annuity(amt,rate,ui.loanYrs*12);
+  $('#lAmt').textContent=eur(amt,1);
+  $('#qLoan').innerHTML=`<div class="line"><span>Taux</span><b>${nf(rate,2)} %</b></div><div class="line"><span>Mensualité</span><b>${eur(m,1)}</b></div><div class="line"><span>Coût total du crédit</span><b>${eur(m*ui.loanYrs*12-amt,1)}</b></div>`;}
+function vHold(){
+  const tm=taxMult();
+  const taxTable=`<table><tr><th>Impôt</th><th>En nom propre</th><th>Via la holding</th></tr>
+  <tr><td>Dividendes (part ≥ 5 %)</td><td>30 %</td><td class="pos">${tx(.0125*tm)}</td></tr>
+  <tr><td>Dividendes (part &lt; 5 %)</td><td>30 %</td><td>${tx(.25*tm)}</td></tr>
+  <tr><td>Plus-value (≥ 5 %, 2 ans)</td><td>30 %</td><td class="pos">${tx(.03*tm)}</td></tr>
+  <tr><td>Autres plus-values</td><td>30 %</td><td>${tx(.25*tm)}</td></tr></table>`;
+  if(!G.holding)return `<div class="box"><h4>🏢 Créer une holding</h4><p class="mut">Une holding est une société qui détient vos participations à votre place. Elle paie beaucoup moins d’impôts sur les dividendes des entreprises dont elle possède au moins 5 %, rassure la banque et peut embaucher une équipe.</p>${taxTable}
+  <p class="mut">Coût : ${eur(HOLD_COST,1)} de création, puis ${eur(HOLD_FIX,1)} par mois de frais de structure.</p>
+  <button class="btn" data-a="hold" ${G.cash<HOLD_COST?'disabled':''}>Créer ma holding (${eur(HOLD_COST,1)})</button></div>`;
+  return `<div class="kpis"><div class="kpi"><small>Salaires / mois</small><b>${eur(salaries(),1)}</b></div><div class="kpi"><small>Frais de structure</small><b>${eur(HOLD_FIX,1)}</b></div><div class="kpi"><small>Impôts payés</small><b>${eur(G.totTax)}</b></div></div>
+  <h3>Équipe</h3>
+  ${Object.keys(ROLES).map(k=>{const R=ROLES[k],l=G.staff[k];return `<div class="box"><h4>${R.e} ${R.n} <span class="pips">${'●'.repeat(l)}${'○'.repeat(3-l)}</span></h4>
+   <div>${l?`<b>${LVL[l]}</b> · ${eur(R.sal[l-1],1)}/mois<br><span class="pos">${R.d(l)}</span>`:'<span class="mut">Poste vacant</span>'}</div>
+   ${l<3?`<small>${l?'Promotion':'Embauche'} au niveau ${LVL[l+1]} (${eur(R.sal[l],1)}/mois) : ${R.d(l+1)}</small>`:''}
+   <div class="btns" style="margin-top:8px">${l<3?`<button class="btn sm" data-a="hire" data-k="${k}" ${G.cash<R.sal[l]?'disabled':''}>${l?'Promouvoir':'Embaucher'} (${eur(R.sal[l],1)})</button>`:''}${l?`<button class="btn sec sm" data-a="fire" data-k="${k}">Licencier</button>`:''}</div></div>`;}).join('')}
+  <h3>Fiscalité</h3><div class="box">${taxTable}</div>`;
+}
+
+function renderCard(){
+  const el=$('#card'),b=ui.sel!=null?byId(ui.sel):null;if(!b){el.hidden=true;return;}
+  el.hidden=false;const S=SECT[b.s],st=SS[b.s],v=valo(b),C=CITIES[b.c],an=G.staff.ana;
+  const rc=b.ca/st.ca,rm=st.mg>0?b.ma/st.mg:1,g=g12(b);
+  const h=b.h,mn=Math.min(...h),mx=Math.max(...h),sp=(mx-mn)||1;
+  const pts=h.map((x,i)=>`${i/(h.length-1)*300},${38-(x-mn)/sp*34}`).join(' ');
+  const fx=G.fx.filter(f=>(f.sec&&f.sec[b.s])||f.ci===b.c);
+  const maxBuy=b.max-b.own;
+  let html=`<div class="hd"><div class="em" style="background:${S.c}">${S.e}</div><div><h2>${b.n}</h2><small>${S.n} · ${C.n} · depuis ${b.yr} · gérant : ${b.boss}</small></div><button class="x" data-a="close" title="Fermer">✕</button></div>
+  <div class="kpis"><div class="kpi"><small>Chiffre d’affaires</small><b>${eur(b.ca)}</b></div><div class="kpi"><small>Marge nette</small><b class="${cls(b.ma)}">${pc(b.ma)}</b></div><div class="kpi"><small>Bénéfice / an</small><b class="${cls(b.ma)}">${eur(b.ca*b.ma)}</b></div>
+  <div class="kpi"><small>Valorisation</small><b>${eur(v)}</b></div><div class="kpi"><small>Rendement</small><b class="gold">${pc(yld(b))}</b></div><div class="kpi"><small>Bénéfice distribué</small><b>${pc(b.pay,0)}</b></div></div>
+  <div class="box"><h4>Comparaison avec son secteur (${st.n} entreprises en France)</h4>
+   <div class="cmp"><div class="lab"><span>CA : ${eur(b.ca)} <small>(moyenne ${eur(st.ca)})</small></span><b class="${cls(rc-1)}">${rc>=1?'+':'−'}${pc(Math.abs(rc-1),0)}</b></div><div class="bar"><i style="width:${clamp(rc*50,3,100)}%"></i><u></u></div></div>
+   <div class="cmp"><div class="lab"><span>Marge : ${pc(b.ma)} <small>(moyenne ${pc(st.mg)})</small></span><b class="${cls(b.ma-st.mg)}">${b.ma>=st.mg?'+':'−'}${nf(Math.abs(b.ma-st.mg)*100,1)} pt</b></div><div class="bar"><i style="width:${clamp(rm*50,3,100)}%"></i><u></u></div></div>
+   <div class="lab" style="display:flex;justify-content:space-between;font-size:12px"><span>CA sur 24 mois</span><b class="${cls(g)}">${g>=0?'▲':'▼'} ${pc(Math.abs(g))} sur un an</b></div>
+   <svg viewBox="0 0 300 40" preserveAspectRatio="none" style="width:100%;height:40px;display:block"><polyline points="${pts}" fill="none" stroke="#5aa9ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+   <small>Trésorerie de l’entreprise : <span class="${cls(b.tre)}">${eur(b.tre)}</span></small></div>
+  <div class="box"><h4>🔎 Avis de l’analyste</h4>${an>=1?`<div class="line"><span>Potentiel de croissance</span><b class="gold">${stars(b)}</b></div>`:''}${an>=2?`<div class="line"><span>Qualité de gestion</span><b>${grade(b)}${isGem(b)?' · ✨ pépite':''}</b></div>`:''}${an<1?`<span class="lock">🔒 Embauchez un analyste dans votre holding pour connaître le potentiel caché de cette entreprise.</span>`:an<2?`<span class="lock">🔒 Analyste confirmé : note de gestion et pépites.</span>`:''}</div>
+  ${fx.length?`<div class="box"><h4>📰 Actualités qui la touchent</h4>${fx.map(f=>`<div class="log">${f.t} <small>(${f.left} mois)</small></div>`).join('')}</div>`:''}`;
+  if(b.own>0){const mv=v*b.own/100;
+    html+=`<div class="box" style="border-color:var(--gold)"><h4>💼 Votre participation : ${b.own} %</h4>
+    <div class="line"><span>Valeur de vos parts</span><b>${eur(mv,1)}</b></div><div class="line"><span>Investi</span><b>${eur(b.cost,1)}</b></div>
+    <div class="line"><span>Plus-value latente</span><b class="${cls(mv-b.cost)}">${sgn(mv-b.cost)}</b></div>
+    <div class="line"><span>Dividendes nets estimés</span><b class="pos">${eur(estDiv(b),1)}/an</b></div><div class="line"><span>Dividendes déjà reçus</span><b>${eur(b.divs,1)}</b></div></div>`;}
+  if(b.own>=50){
+    html+=`<div class="box"><h4>🎛️ Vous dirigez (majoritaire)</h4>
+    <div class="qrow"><span>Part du bénéfice distribuée</span><b id="lPay">${pc(b.pay,0)}</b></div><input type="range" id="rPay" min="0" max="100" step="5" value="${Math.round(b.pay*100)}">
+    <small>Ce qui n’est pas distribué reste dans l’entreprise et finance sa croissance.</small>
+    <div class="btns" style="margin-top:8px"><button class="btn sec sm" data-a="mk" ${b.mk>0||G.cash<b.ca*.04?'disabled':''}>📣 Marketing ${b.mk>0?`(${b.mk} mois restants)`:`(${eur(b.ca*.04)})`}</button>
+    <button class="btn sec sm" data-a="reno" ${G.t<b.rn||G.cash<b.ca*.12?'disabled':''}>🏗️ Rénover ${G.t<b.rn?'(déjà fait)':`(${eur(b.ca*.12)})`}</button>
+    ${b.tre<0?`<button class="btn red sm" data-a="recap" ${G.cash<-b.tre?'disabled':''}>🩹 Recapitaliser (${eur(-b.tre)})</button>`:''}</div>
+    <small>Marketing : +10 %/an de croissance pendant 12 mois. Rénovation : meilleure gestion et +4 % de CA.</small></div>`;}
+  html+=`<div class="box"><h4>Acheter des parts</h4>${maxBuy>0?`<div class="qrow"><span>Part à acheter</span><b id="lBuy"></b></div>
+    <input type="range" id="rBuy" min="1" max="${maxBuy}" step="1" value="${clamp(ui.buy,1,maxBuy)}">
+    <div class="chips">${[5,10,25].filter(x=>x<=maxBuy).map(x=>`<span class="chip" data-a="cbuy" data-v="${x}">${x} %</span>`).join('')}${b.own<50&&b.max>=50?`<span class="chip" data-a="cbuy" data-v="${50-b.own}">Majorité</span>`:''}<span class="chip" data-a="cbuy" data-v="max">Max</span></div>
+    <div id="qBuy"></div><button class="btn" id="bBuy" data-a="buy" style="margin-top:8px">Acheter</button>
+    <small>${b.max<100?`Le gérant garde ${b.max===49?'le contrôle':'la main'} : capital ouvert jusqu’à ${b.max} %.`:'Le gérant est prêt à céder jusqu’à 100 % du capital.'}</small>`
+    :`<span class="mut">${b.own>=100?'Vous possédez 100 % du capital.':`Le gérant ne vend pas plus de ${b.max} % du capital.`}</span>`}</div>`;
+  if(b.own>0)html+=`<div class="box"><h4>Vendre des parts</h4><div class="qrow"><span>Part à vendre</span><b id="lSell"></b></div>
+    <input type="range" id="rSell" min="1" max="${b.own}" step="1" value="${clamp(ui.sell,1,b.own)}"><div id="qSell"></div>
+    <button class="btn sec" data-a="sell" id="bSell" style="margin-top:8px">Vendre</button></div>`;
+  el.innerHTML=html;updBuy();updSell();
+}
+function updBuy(){const b=byId(ui.sel),r=$('#rBuy');if(!b||!r)return;ui.buy=+r.value;const q=quoteBuy(b,ui.buy),af=b.own+ui.buy;
+  const dv=Math.max(0,b.ca*b.ma)*b.pay*ui.buy/100*(1-divTax(af));
+  $('#lBuy').textContent=ui.buy+' %';
+  $('#qBuy').innerHTML=`<div class="qrow"><span>Prix total</span><b>${eur(q.total,1)}</b></div><small>Parts ${eur(q.price)} + frais ${eur(q.fees)}${q.ctrl?` + prime de contrôle ${eur(q.ctrl)}`:''}<br>Dividende net estimé : ≈ ${eur(dv,1)}/an (impôt ${tx(divTax(af))})</small>`;
+  const bt=$('#bBuy'),no=q.total>G.cash;bt.disabled=no;bt.textContent=no?'Trésorerie insuffisante':'Acheter '+ui.buy+' %';}
+function updSell(){const b=byId(ui.sel),r=$('#rSell');if(!b||!r)return;ui.sell=+r.value;const q=quoteSell(b,ui.sell);
+  $('#lSell').textContent=ui.sell+' %';
+  $('#qSell').innerHTML=`<div class="qrow"><span>Net encaissé</span><b>${eur(q.net,1)}</b></div><small>Plus-value ${sgn(q.gain)} · impôt ${eur(q.tax,1)} (${tx(pvTax(b))}) · frais de cession 3 %</small>`;
+  $('#bSell').textContent='Vendre '+ui.sell+' %';}
+function maxAffordable(b){for(let p=b.max-b.own;p>=1;p--)if(quoteBuy(b,p).total<=G.cash)return p;return 1;}
+
+/* ---------- Fenêtres ---------- */
+function modal(html){$('#modalIn').innerHTML=html;$('#modal').hidden=false;}
+function closeModal(){$('#modal').hidden=true;}
+function help(first){modal(`<h2>📈 InvestFront <span class="tag">alpha</span></h2>
+ <p>Vous êtes investisseur. La France compte ${G.biz.length} commerces (tous fictifs) : restaurants, boulangeries, magasins de sport, pharmacies… Chacun a son chiffre d’affaires et sa rentabilité.</p>
+ <ul><li><b>Explorez la carte</b> : cliquez sur une ville, puis sur un commerce pour voir ses chiffres et les comparer à la moyenne de son secteur.</li>
+ <li><b>Achetez des parts</b> du capital. Chaque fin de trimestre, l’entreprise vous verse une partie de son bénéfice en <b>dividendes</b>.</li>
+ <li><b>Empruntez à la banque</b> pour aller plus vite : elle prête selon votre patrimoine et vos revenus.</li>
+ <li><b>Devenez majoritaire</b> (50 %) pour décider des dividendes, lancer du marketing ou rénover.</li>
+ <li><b>Créez votre holding</b> pour payer moins d’impôts et embaucher : directeur des opérations, fiscaliste, analyste, directeur financier.</li>
+ <li><b>Surveillez l’actualité</b> : canicule, travaux, hausse des taux… tout bouge, et une entreprise mal en point peut faire faillite.</li></ul>
+ <p class="mut">Vitesse du jeu en haut à droite (ou touches espace, 1, 2, 3). La partie est sauvegardée dans votre navigateur.</p>
+ <button class="btn" data-a="closem">${first?'Commencer avec '+eur(G.cash,1):'Reprendre'}</button>`);}
+
+/* ---------- Événements d'interface ---------- */
+function setSpeed(v){if(G.over)return;speed=v;renderTop();}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;const d=t.dataset;
+  switch(d.a){
+    case 'spd':setSpeed(+d.v);break;
+    case 'tab':ui.tab=d.v;ui.sel=null;refresh(false);$('#view').scrollTop=0;break;
+    case 'close':ui.sel=null;renderCard();drawMap();break;
+    case 'sel':select(+d.id,true);break;
+    case 'buy':buy();break;
+    case 'sell':sell();break;
+    case 'cbuy':{const b=byId(ui.sel),r=$('#rBuy');if(!b||!r)break;r.value=clamp(d.v==='max'?maxAffordable(b):+d.v,1,b.max-b.own);updBuy();break;}
+    case 'mk':marketing();break;
+    case 'reno':renovate();break;
+    case 'recap':recap();break;
+    case 'sfil':ui.sf.has(d.k)?ui.sf.delete(d.k):ui.sf.add(d.k);renderView();drawMap();break;
+    case 'sfclear':ui.sf.clear();renderView();drawMap();break;
+    case 'sectgo':ui.sf.clear();ui.sf.add(d.k);ui.tab='market';refresh(false);break;
+    case 'hold':createHolding();break;
+    case 'hire':hire(d.k);break;
+    case 'fire':fire(d.k);break;
+    case 'loan':takeLoan();break;
+    case 'repay':repay(+d.id);break;
+    case 'help':help(false);break;
+    case 'closem':closeModal();if(!G.seen){G.seen=true;setSpeed(1);save();}break;
+    case 'reset':modal(`<h2>Nouvelle partie ?</h2><p>La partie en cours sera effacée et une nouvelle France sera générée.</p><div class="btns"><button class="btn red sm" data-a="reset2">Oui, recommencer</button><button class="btn sec sm" data-a="closem">Annuler</button></div>`);break;
+    case 'reset2':closeModal();speed=0;ui.sel=null;ui.sf.clear();ui.tab='dash';newGame();save();if(map)map.setView([46.6,2.6],6);refresh(false);help(true);break;
+  }
+});
+document.addEventListener('input',e=>{const id=e.target.id;
+  if(id==='rBuy')updBuy();else if(id==='rSell')updSell();else if(id==='rLoan')updLoan();
+  else if(id==='rPay'){const b=byId(ui.sel);if(b&&b.own>=50){b.pay=+e.target.value/100;$('#lPay').textContent=pc(b.pay,0);}}});
+document.addEventListener('change',e=>{const id=e.target.id;
+  if(id==='selSort'){ui.sort=e.target.value;e.target.blur();renderView();}
+  else if(id==='selYrs'){ui.loanYrs=+e.target.value;e.target.blur();updLoan();}
+  else if(id==='rPay'){save();renderCard();}});
+document.addEventListener('pointerdown',e=>{if(e.target.matches&&e.target.matches('input[type=range]'))dragging=true;});
+['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,()=>{dragging=false;}));
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||!$('#modal').hidden)return;
+  if(e.code==='Space'){e.preventDefault();setSpeed(speed?0:1);}else if(e.key==='1')setSpeed(1);else if(e.key==='2')setSpeed(2);else if(e.key==='3')setSpeed(3);else if(e.key==='Escape'&&ui.sel!=null){ui.sel=null;renderCard();drawMap();}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&G)save();});
+window.addEventListener('beforeunload',()=>{if(G)save();});
+
+/* ---------- Horloge ---------- */
+let last=performance.now(),acc=0;
+setInterval(()=>{const now=performance.now(),dt=Math.min(now-last,400);last=now;
+  if(!G||G.over||!speed)return;acc+=dt*SPEEDS[speed];let n=0;
+  while(acc>=DAY_MS&&n<60){acc-=DAY_MS;G.t++;n++;if(G.t%30===0){endMonth();if(G.over)return;}}
+  if(n)renderTop();},50);
+
+/* ---------- Démarrage ---------- */
+const resumed=load();if(!resumed)newGame();
+computeStats();initMap();refresh(false);
+if(!G.seen)help(true);else if(G.over)gameOver();
+window.addEventListener('resize',()=>{if(map)map.invalidateSize();});
+</script>
+</body>
+</html>
